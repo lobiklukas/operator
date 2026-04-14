@@ -6,6 +6,7 @@ import type {
 	SessionWithMessages,
 } from "@operator/contracts"
 import { OperatorEventSchema } from "@operator/contracts"
+import { EventSource } from "eventsource"
 
 export interface OperatorClient {
 	readonly health: () => Promise<HealthResponse>
