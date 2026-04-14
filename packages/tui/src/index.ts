@@ -1,4 +1,5 @@
 #!/usr/bin/env bun
+import "@opentui/solid/preload"
 import { startServer } from "@operator/core"
 import { Command } from "commander"
 import { createClient } from "./client.js"
