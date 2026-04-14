@@ -1,87 +1,98 @@
-import { z } from "zod"
+import { Schema } from "effect"
 
-const BaseEvent = z.object({
-	sessionId: z.string(),
-	timestamp: z.string().datetime(),
+const BaseEvent = Schema.Struct({
+	sessionId: Schema.String,
+	timestamp: Schema.String,
 })
 
-export const SessionCreatedEvent = BaseEvent.extend({
-	type: z.literal("session.created"),
+export const SessionCreatedEvent = Schema.Struct({
+	...BaseEvent.fields,
+	type: Schema.Literal("session.created"),
 })
-export type SessionCreatedEvent = z.infer<typeof SessionCreatedEvent>
+export type SessionCreatedEvent = typeof SessionCreatedEvent.Type
 
-export const SessionUpdatedEvent = BaseEvent.extend({
-	type: z.literal("session.updated"),
+export const SessionUpdatedEvent = Schema.Struct({
+	...BaseEvent.fields,
+	type: Schema.Literal("session.updated"),
 })
-export type SessionUpdatedEvent = z.infer<typeof SessionUpdatedEvent>
+export type SessionUpdatedEvent = typeof SessionUpdatedEvent.Type
 
-export const MessageDeltaEvent = BaseEvent.extend({
-	type: z.literal("message.delta"),
-	text: z.string(),
-	messageId: z.string(),
+export const MessageDeltaEvent = Schema.Struct({
+	...BaseEvent.fields,
+	type: Schema.Literal("message.delta"),
+	text: Schema.String,
+	messageId: Schema.String,
 })
-export type MessageDeltaEvent = z.infer<typeof MessageDeltaEvent>
+export type MessageDeltaEvent = typeof MessageDeltaEvent.Type
 
-export const ReasoningDeltaEvent = BaseEvent.extend({
-	type: z.literal("reasoning.delta"),
-	text: z.string(),
-	messageId: z.string(),
+export const ReasoningDeltaEvent = Schema.Struct({
+	...BaseEvent.fields,
+	type: Schema.Literal("reasoning.delta"),
+	text: Schema.String,
+	messageId: Schema.String,
 })
-export type ReasoningDeltaEvent = z.infer<typeof ReasoningDeltaEvent>
+export type ReasoningDeltaEvent = typeof ReasoningDeltaEvent.Type
 
-export const ToolStartEvent = BaseEvent.extend({
-	type: z.literal("tool.start"),
-	toolCallId: z.string(),
-	name: z.string(),
-	params: z.unknown(),
-	messageId: z.string(),
+export const ToolStartEvent = Schema.Struct({
+	...BaseEvent.fields,
+	type: Schema.Literal("tool.start"),
+	toolCallId: Schema.String,
+	name: Schema.String,
+	params: Schema.Unknown,
+	messageId: Schema.String,
 })
-export type ToolStartEvent = z.infer<typeof ToolStartEvent>
+export type ToolStartEvent = typeof ToolStartEvent.Type
 
-export const ToolCompleteEvent = BaseEvent.extend({
-	type: z.literal("tool.complete"),
-	toolCallId: z.string(),
-	result: z.string(),
-	messageId: z.string(),
+export const ToolCompleteEvent = Schema.Struct({
+	...BaseEvent.fields,
+	type: Schema.Literal("tool.complete"),
+	toolCallId: Schema.String,
+	result: Schema.String,
+	messageId: Schema.String,
 })
-export type ToolCompleteEvent = z.infer<typeof ToolCompleteEvent>
+export type ToolCompleteEvent = typeof ToolCompleteEvent.Type
 
-export const ToolErrorEvent = BaseEvent.extend({
-	type: z.literal("tool.error"),
-	toolCallId: z.string(),
-	error: z.string(),
-	messageId: z.string(),
+export const ToolErrorEvent = Schema.Struct({
+	...BaseEvent.fields,
+	type: Schema.Literal("tool.error"),
+	toolCallId: Schema.String,
+	error: Schema.String,
+	messageId: Schema.String,
 })
-export type ToolErrorEvent = z.infer<typeof ToolErrorEvent>
+export type ToolErrorEvent = typeof ToolErrorEvent.Type
 
-export const TurnCompleteEvent = BaseEvent.extend({
-	type: z.literal("turn.complete"),
-	messageId: z.string(),
+export const TurnCompleteEvent = Schema.Struct({
+	...BaseEvent.fields,
+	type: Schema.Literal("turn.complete"),
+	messageId: Schema.String,
 })
-export type TurnCompleteEvent = z.infer<typeof TurnCompleteEvent>
+export type TurnCompleteEvent = typeof TurnCompleteEvent.Type
 
-export const TokenUsageEvent = BaseEvent.extend({
-	type: z.literal("token.usage"),
-	input: z.number().int(),
-	output: z.number().int(),
+export const TokenUsageEvent = Schema.Struct({
+	...BaseEvent.fields,
+	type: Schema.Literal("token.usage"),
+	input: Schema.Int,
+	output: Schema.Int,
 })
-export type TokenUsageEvent = z.infer<typeof TokenUsageEvent>
+export type TokenUsageEvent = typeof TokenUsageEvent.Type
 
-export const ErrorEvent = BaseEvent.extend({
-	type: z.literal("error"),
-	error: z.string(),
+export const ErrorEvent = Schema.Struct({
+	...BaseEvent.fields,
+	type: Schema.Literal("error"),
+	error: Schema.String,
 })
-export type ErrorEvent = z.infer<typeof ErrorEvent>
+export type ErrorEvent = typeof ErrorEvent.Type
 
-export const SystemInitEvent = BaseEvent.extend({
-	type: z.literal("system.init"),
-	model: z.string(),
-	tools: z.array(z.string()),
-	cwd: z.string(),
+export const SystemInitEvent = Schema.Struct({
+	...BaseEvent.fields,
+	type: Schema.Literal("system.init"),
+	model: Schema.String,
+	tools: Schema.Array(Schema.String),
+	cwd: Schema.String,
 })
-export type SystemInitEvent = z.infer<typeof SystemInitEvent>
+export type SystemInitEvent = typeof SystemInitEvent.Type
 
-export const OperatorEvent = z.discriminatedUnion("type", [
+export const OperatorEvent = Schema.Union(
 	SessionCreatedEvent,
 	SessionUpdatedEvent,
 	MessageDeltaEvent,
@@ -93,5 +104,5 @@ export const OperatorEvent = z.discriminatedUnion("type", [
 	TokenUsageEvent,
 	ErrorEvent,
 	SystemInitEvent,
-])
-export type OperatorEvent = z.infer<typeof OperatorEvent>
+)
+export type OperatorEvent = typeof OperatorEvent.Type

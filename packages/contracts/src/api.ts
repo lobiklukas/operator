@@ -1,27 +1,30 @@
-import { z } from "zod"
+import { Schema } from "effect"
 import { Message } from "./message.js"
-import { CreateSessionInput, Session } from "./session.js"
+import { CreateSessionInput, SessionFields } from "./session.js"
 
-export const PromptInput = z.object({
-	text: z.string().min(1),
+export const PromptInput = Schema.Struct({
+	text: Schema.String.pipe(Schema.minLength(1)),
 })
-export type PromptInput = z.infer<typeof PromptInput>
+export type PromptInput = typeof PromptInput.Type
 
-export const SessionWithMessages = Session.extend({
-	messages: z.array(Message),
-})
-export type SessionWithMessages = z.infer<typeof SessionWithMessages>
+export const SessionWithMessages = Schema.mutable(
+	Schema.Struct({
+		...SessionFields,
+		messages: Schema.mutable(Schema.Array(Message)),
+	}),
+)
+export type SessionWithMessages = typeof SessionWithMessages.Type
 
-export const ApiError = z.object({
-	error: z.string(),
-	code: z.string().optional(),
+export const ApiError = Schema.Struct({
+	error: Schema.String,
+	code: Schema.optional(Schema.String),
 })
-export type ApiError = z.infer<typeof ApiError>
+export type ApiError = typeof ApiError.Type
 
-export const HealthResponse = z.object({
-	status: z.literal("ok"),
-	version: z.string(),
+export const HealthResponse = Schema.Struct({
+	status: Schema.Literal("ok"),
+	version: Schema.String,
 })
-export type HealthResponse = z.infer<typeof HealthResponse>
+export type HealthResponse = typeof HealthResponse.Type
 
 export { CreateSessionInput }

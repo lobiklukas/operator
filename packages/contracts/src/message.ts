@@ -1,51 +1,53 @@
-import { z } from "zod"
-import type { SessionID } from "./session.js"
+import { Schema } from "effect"
+import { SessionID } from "./session.js"
 
-export const MessageID = z.string().brand("MessageID")
-export type MessageID = z.infer<typeof MessageID>
+export const MessageID = Schema.String.pipe(Schema.brand("MessageID"))
+export type MessageID = typeof MessageID.Type
 
-export const MessageRole = z.enum(["user", "assistant", "system"])
-export type MessageRole = z.infer<typeof MessageRole>
+export const MessageRole = Schema.Literal("user", "assistant", "system")
+export type MessageRole = typeof MessageRole.Type
 
-export const ToolCallStatus = z.enum(["pending", "running", "completed", "error"])
-export type ToolCallStatus = z.infer<typeof ToolCallStatus>
+export const ToolCallStatus = Schema.Literal("pending", "running", "completed", "error")
+export type ToolCallStatus = typeof ToolCallStatus.Type
 
-export const TextPart = z.object({
-	type: z.literal("text"),
-	content: z.string(),
+export const TextPart = Schema.Struct({
+	type: Schema.Literal("text"),
+	content: Schema.String,
 })
-export type TextPart = z.infer<typeof TextPart>
+export type TextPart = typeof TextPart.Type
 
-export const ReasoningPart = z.object({
-	type: z.literal("reasoning"),
-	content: z.string(),
+export const ReasoningPart = Schema.Struct({
+	type: Schema.Literal("reasoning"),
+	content: Schema.String,
 })
-export type ReasoningPart = z.infer<typeof ReasoningPart>
+export type ReasoningPart = typeof ReasoningPart.Type
 
-export const ToolCallPart = z.object({
-	type: z.literal("tool_call"),
-	id: z.string(),
-	name: z.string(),
-	params: z.unknown(),
-	result: z.string().optional(),
+export const ToolCallPart = Schema.Struct({
+	type: Schema.Literal("tool_call"),
+	id: Schema.String,
+	name: Schema.String,
+	params: Schema.Unknown,
+	result: Schema.optional(Schema.String),
 	status: ToolCallStatus,
 })
-export type ToolCallPart = z.infer<typeof ToolCallPart>
+export type ToolCallPart = typeof ToolCallPart.Type
 
-export const MessagePart = z.discriminatedUnion("type", [TextPart, ReasoningPart, ToolCallPart])
-export type MessagePart = z.infer<typeof MessagePart>
+export const MessagePart = Schema.Union(TextPart, ReasoningPart, ToolCallPart)
+export type MessagePart = typeof MessagePart.Type
 
-export const Message = z.object({
-	id: MessageID,
-	sessionId: z.string() as unknown as z.ZodType<SessionID>,
-	role: MessageRole,
-	parts: z.array(MessagePart),
-	tokenUsage: z
-		.object({
-			input: z.number().int(),
-			output: z.number().int(),
-		})
-		.nullable(),
-	createdAt: z.string().datetime(),
-})
-export type Message = z.infer<typeof Message>
+export const Message = Schema.mutable(
+	Schema.Struct({
+		id: MessageID,
+		sessionId: SessionID,
+		role: MessageRole,
+		parts: Schema.mutable(Schema.Array(MessagePart)),
+		tokenUsage: Schema.NullOr(
+			Schema.Struct({
+				input: Schema.Int,
+				output: Schema.Int,
+			}),
+		),
+		createdAt: Schema.String,
+	}),
+)
+export type Message = typeof Message.Type

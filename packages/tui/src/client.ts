@@ -6,7 +6,10 @@ import type {
 	SessionWithMessages,
 } from "@operator/contracts"
 import { OperatorEventSchema } from "@operator/contracts"
+import { Schema } from "effect"
 import { EventSource } from "eventsource"
+
+const decodeEvent = Schema.decodeUnknownOption(OperatorEventSchema)
 
 export interface OperatorClient {
 	readonly health: () => Promise<HealthResponse>
@@ -90,9 +93,9 @@ export function createClient(baseUrl: string): OperatorClient {
 				eventSource.addEventListener(type, (e: MessageEvent) => {
 					try {
 						const data = JSON.parse(e.data)
-						const parsed = OperatorEventSchema.safeParse(data)
-						if (parsed.success) {
-							handler(parsed.data)
+						const result = decodeEvent(data)
+						if (result._tag === "Some") {
+							handler(result.value)
 						}
 					} catch {
 						// ignore parse errors

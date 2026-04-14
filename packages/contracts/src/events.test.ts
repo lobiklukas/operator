@@ -1,11 +1,13 @@
+import { Schema } from "effect"
 import { describe, expect, it } from "vitest"
 import { OperatorEvent } from "./events.js"
 
+const decode = Schema.decodeUnknownSync(OperatorEvent)
 const now = "2026-04-14T00:00:00.000Z"
 
 describe("OperatorEvent", () => {
 	it("parses message.delta event", () => {
-		const event = OperatorEvent.parse({
+		const event = decode({
 			type: "message.delta",
 			sessionId: "sess_01",
 			timestamp: now,
@@ -19,7 +21,7 @@ describe("OperatorEvent", () => {
 	})
 
 	it("parses tool.start event", () => {
-		const event = OperatorEvent.parse({
+		const event = decode({
 			type: "tool.start",
 			sessionId: "sess_01",
 			timestamp: now,
@@ -32,7 +34,7 @@ describe("OperatorEvent", () => {
 	})
 
 	it("parses tool.complete event", () => {
-		const event = OperatorEvent.parse({
+		const event = decode({
 			type: "tool.complete",
 			sessionId: "sess_01",
 			timestamp: now,
@@ -44,7 +46,7 @@ describe("OperatorEvent", () => {
 	})
 
 	it("parses turn.complete event", () => {
-		const event = OperatorEvent.parse({
+		const event = decode({
 			type: "turn.complete",
 			sessionId: "sess_01",
 			timestamp: now,
@@ -54,7 +56,7 @@ describe("OperatorEvent", () => {
 	})
 
 	it("parses token.usage event", () => {
-		const event = OperatorEvent.parse({
+		const event = decode({
 			type: "token.usage",
 			sessionId: "sess_01",
 			timestamp: now,
@@ -65,7 +67,7 @@ describe("OperatorEvent", () => {
 	})
 
 	it("parses error event", () => {
-		const event = OperatorEvent.parse({
+		const event = decode({
 			type: "error",
 			sessionId: "sess_01",
 			timestamp: now,
@@ -75,7 +77,7 @@ describe("OperatorEvent", () => {
 	})
 
 	it("parses system.init event", () => {
-		const event = OperatorEvent.parse({
+		const event = decode({
 			type: "system.init",
 			sessionId: "sess_01",
 			timestamp: now,
@@ -88,7 +90,7 @@ describe("OperatorEvent", () => {
 
 	it("rejects unknown event type", () => {
 		expect(() =>
-			OperatorEvent.parse({
+			decode({
 				type: "unknown.event",
 				sessionId: "sess_01",
 				timestamp: now,

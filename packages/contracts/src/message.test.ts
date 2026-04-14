@@ -1,29 +1,32 @@
+import { Schema } from "effect"
 import { describe, expect, it } from "vitest"
 import { Message, MessagePart, MessageRole, ToolCallStatus } from "./message.js"
 
+const decode = <A, I>(schema: Schema.Schema<A, I>) => Schema.decodeUnknownSync(schema)
+
 describe("MessageRole", () => {
 	it("accepts valid roles", () => {
-		expect(MessageRole.parse("user")).toBe("user")
-		expect(MessageRole.parse("assistant")).toBe("assistant")
-		expect(MessageRole.parse("system")).toBe("system")
+		expect(decode(MessageRole)("user")).toBe("user")
+		expect(decode(MessageRole)("assistant")).toBe("assistant")
+		expect(decode(MessageRole)("system")).toBe("system")
 	})
 
 	it("rejects invalid roles", () => {
-		expect(() => MessageRole.parse("bot")).toThrow()
+		expect(() => decode(MessageRole)("bot")).toThrow()
 	})
 })
 
 describe("ToolCallStatus", () => {
 	it("accepts all valid statuses", () => {
 		for (const status of ["pending", "running", "completed", "error"]) {
-			expect(ToolCallStatus.parse(status)).toBe(status)
+			expect(decode(ToolCallStatus)(status)).toBe(status)
 		}
 	})
 })
 
 describe("MessagePart", () => {
 	it("parses a text part", () => {
-		const part = MessagePart.parse({ type: "text", content: "Hello" })
+		const part = decode(MessagePart)({ type: "text", content: "Hello" })
 		expect(part.type).toBe("text")
 		if (part.type === "text") {
 			expect(part.content).toBe("Hello")
@@ -31,12 +34,12 @@ describe("MessagePart", () => {
 	})
 
 	it("parses a reasoning part", () => {
-		const part = MessagePart.parse({ type: "reasoning", content: "Thinking..." })
+		const part = decode(MessagePart)({ type: "reasoning", content: "Thinking..." })
 		expect(part.type).toBe("reasoning")
 	})
 
 	it("parses a tool call part", () => {
-		const part = MessagePart.parse({
+		const part = decode(MessagePart)({
 			type: "tool_call",
 			id: "tc_1",
 			name: "Read",
@@ -52,13 +55,13 @@ describe("MessagePart", () => {
 	})
 
 	it("rejects an unknown part type", () => {
-		expect(() => MessagePart.parse({ type: "unknown", data: 123 })).toThrow()
+		expect(() => decode(MessagePart)({ type: "unknown", data: 123 })).toThrow()
 	})
 })
 
 describe("Message", () => {
 	it("parses a valid message with parts", () => {
-		const msg = Message.parse({
+		const msg = decode(Message)({
 			id: "msg_01",
 			sessionId: "sess_01",
 			role: "assistant",
@@ -81,7 +84,7 @@ describe("Message", () => {
 	})
 
 	it("accepts null token usage", () => {
-		const msg = Message.parse({
+		const msg = decode(Message)({
 			id: "msg_02",
 			sessionId: "sess_01",
 			role: "user",

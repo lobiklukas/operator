@@ -1,9 +1,10 @@
 import { existsSync, mkdirSync } from "node:fs"
 import { join } from "node:path"
-import { Effect, ManagedRuntime } from "effect"
+import { HttpServer } from "@effect/platform"
+import { Effect, Layer, ManagedRuntime } from "effect"
 import type { ConfigOptions } from "./config/service.js"
 import { createMainLayer } from "./effect/layers.js"
-import { ServerService } from "./server/server.js"
+import { HttpServerLive, makeAppLayer } from "./server/server.js"
 import { StorageService, runMigrations } from "./storage/database.js"
 
 export interface StartResult {
@@ -20,12 +21,22 @@ export async function startServer(options: ConfigOptions = {}): Promise<StartRes
 	}
 	const dbPath = join(dbDir, "database.sqlite")
 
-	const mainLayer = createMainLayer({
+	const serviceLayer = createMainLayer({
 		config: options,
 		dbPath,
 	})
 
-	const runtime = ManagedRuntime.make(mainLayer)
+	const httpLayer = HttpServerLive(0)
+
+	// App layer: serves the HttpApi on the HttpServer
+	const appLayer = makeAppLayer(serviceLayer, 0).pipe(
+		Layer.provide(httpLayer),
+	)
+
+	// Full layer: app + services + http server (for address reading)
+	const fullLayer = Layer.mergeAll(appLayer, serviceLayer, httpLayer)
+
+	const runtime = ManagedRuntime.make(fullLayer)
 
 	// Run migrations
 	await runtime.runPromise(
@@ -35,25 +46,21 @@ export async function startServer(options: ConfigOptions = {}): Promise<StartRes
 		}),
 	)
 
-	// Start server
-	const { port, url } = await runtime.runPromise(
+	// Read the actual server address
+	const address = await runtime.runPromise(
 		Effect.gen(function* () {
-			const server = yield* ServerService
-			return yield* server.start()
+			const server = yield* HttpServer.HttpServer
+			const addr = server.address
+			if (addr._tag === "TcpAddress") {
+				return { port: addr.port, url: `http://localhost:${String(addr.port)}` }
+			}
+			return { port: 0, url: "unknown" }
 		}),
 	)
 
 	return {
-		port,
-		url,
-		stop: async () => {
-			await runtime.runPromise(
-				Effect.gen(function* () {
-					const server = yield* ServerService
-					yield* server.stop()
-				}),
-			)
-			await runtime.dispose()
-		},
+		port: address.port,
+		url: address.url,
+		stop: () => runtime.dispose(),
 	}
 }

@@ -1,35 +1,38 @@
+import { Schema } from "effect"
 import { describe, expect, it } from "vitest"
 import { CreateSessionInput, Session, SessionID, SessionStatus } from "./session.js"
 
+const decode = <A, I>(schema: Schema.Schema<A, I>) => Schema.decodeUnknownSync(schema)
+
 describe("SessionStatus", () => {
 	it("accepts valid statuses", () => {
-		expect(SessionStatus.parse("idle")).toBe("idle")
-		expect(SessionStatus.parse("running")).toBe("running")
-		expect(SessionStatus.parse("error")).toBe("error")
-		expect(SessionStatus.parse("archived")).toBe("archived")
+		expect(decode(SessionStatus)("idle")).toBe("idle")
+		expect(decode(SessionStatus)("running")).toBe("running")
+		expect(decode(SessionStatus)("error")).toBe("error")
+		expect(decode(SessionStatus)("archived")).toBe("archived")
 	})
 
 	it("rejects invalid statuses", () => {
-		expect(() => SessionStatus.parse("invalid")).toThrow()
+		expect(() => decode(SessionStatus)("invalid")).toThrow()
 	})
 })
 
 describe("SessionID", () => {
 	it("brands a string as SessionID", () => {
-		const id = SessionID.parse("01JFG123ABC")
+		const id = decode(SessionID)("01JFG123ABC")
 		expect(id).toBe("01JFG123ABC")
 	})
 })
 
 describe("CreateSessionInput", () => {
 	it("accepts empty input", () => {
-		const input = CreateSessionInput.parse({})
+		const input = decode(CreateSessionInput)({})
 		expect(input.model).toBeUndefined()
 		expect(input.title).toBeUndefined()
 	})
 
 	it("accepts full input", () => {
-		const input = CreateSessionInput.parse({
+		const input = decode(CreateSessionInput)({
 			model: "claude-sonnet-4-6",
 			title: "My Session",
 		})
@@ -40,7 +43,7 @@ describe("CreateSessionInput", () => {
 
 describe("Session", () => {
 	it("parses a valid session", () => {
-		const session = Session.parse({
+		const session = decode(Session)({
 			id: "01JFG123ABC",
 			title: "Test Session",
 			model: "claude-sonnet-4-6",
@@ -57,7 +60,7 @@ describe("Session", () => {
 
 	it("rejects session with invalid status", () => {
 		expect(() =>
-			Session.parse({
+			decode(Session)({
 				id: "01JFG123ABC",
 				title: "Test",
 				model: "claude-sonnet-4-6",

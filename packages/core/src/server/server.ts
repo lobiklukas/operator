@@ -1,68 +1,43 @@
-import { Context, Effect, Layer } from "effect"
-import { Hono } from "hono"
-import { cors } from "hono/cors"
-import { EventBus } from "../bus/index.js"
-import { ConfigService } from "../config/service.js"
-import { SessionService } from "../session/service.js"
-import { createEventRoutes } from "./routes/events.js"
-import { createSessionRoutes } from "./routes/sessions.js"
+import { HttpApiBuilder, HttpServer } from "@effect/platform"
+import { Effect, Layer } from "effect"
+import { OperatorApi } from "./api.js"
+import { HealthGroupLive, SessionsGroupLive } from "./handlers.js"
+import { SseRouteLive } from "./sse.js"
 
-export class ServerService extends Context.Tag("operator/ServerService")<
-	ServerService,
-	{
-		readonly start: () => Effect.Effect<{ port: number; url: string }, Error>
-		readonly stop: () => Effect.Effect<void>
-	}
->() {}
+// ---------------------------------------------------------------------------
+// Runtime-detected HTTP server layer (Bun or Node)
+// ---------------------------------------------------------------------------
 
-export const ServerServiceLive = Layer.effect(
-	ServerService,
-	Effect.gen(function* () {
-		const sessionService = yield* SessionService
-		const eventBus = yield* EventBus
-		const config = yield* ConfigService
+export const HttpServerLive = (port: number) =>
+	Layer.unwrapEffect(
+		Effect.gen(function* () {
+			if (typeof globalThis.Bun !== "undefined") {
+				const BunHttpServer = yield* Effect.promise(
+					() => import("@effect/platform-bun/BunHttpServer"),
+				)
+				return BunHttpServer.layer({ port })
+			}
+			const [NodeHttpServer, NodeHttp] = yield* Effect.all([
+				Effect.promise(() => import("@effect/platform-node/NodeHttpServer")),
+				Effect.promise(() => import("node:http")),
+			])
+			return NodeHttpServer.layer(NodeHttp.createServer, { port })
+		}),
+	)
 
-		let server: ReturnType<typeof Bun.serve> | null = null
+// ---------------------------------------------------------------------------
+// Application layer (API routes + middleware)
+// Requires: SessionService, EventBus, ConfigService + HttpServer.HttpServer
+// ---------------------------------------------------------------------------
 
-		const runEffect = <A, E>(effect: Effect.Effect<A, E>): Promise<A> =>
-			Effect.runPromise(effect as Effect.Effect<A, never>)
+export const makeAppLayer = (deps: Layer.Layer<any, any, never>, port: number) => {
+	const apiLayer = Layer.mergeAll(
+		HttpApiBuilder.api(OperatorApi),
+		HealthGroupLive,
+		SessionsGroupLive,
+		SseRouteLive,
+		HttpApiBuilder.middlewareCors(),
+	).pipe(Layer.provide(deps))
 
-		return {
-			start: () =>
-				Effect.gen(function* () {
-					const cfg = yield* config.get()
-
-					const app = new Hono()
-					app.use("/*", cors())
-
-					app.get("/api/health", (c) => c.json({ status: "ok" as const, version: "0.1.0" }))
-
-					const sessionRoutes = createSessionRoutes(sessionService, runEffect)
-					app.route("/api/sessions", sessionRoutes)
-
-					const eventRoutes = createEventRoutes(eventBus, runEffect)
-					app.route("/api/sessions", eventRoutes)
-
-					const port = cfg.server.port || 0
-
-					server = Bun.serve({
-						port,
-						fetch: app.fetch,
-					})
-
-					const actualPort = server.port ?? 0
-					const url = `http://localhost:${String(actualPort)}`
-
-					return { port: actualPort, url }
-				}),
-
-			stop: () =>
-				Effect.sync(() => {
-					if (server) {
-						server.stop()
-						server = null
-					}
-				}),
-		}
-	}),
-)
+	return HttpApiBuilder.serve().pipe(Layer.provide(apiLayer))
+}
