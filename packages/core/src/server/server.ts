@@ -39,5 +39,8 @@ export const makeAppLayer = (deps: Layer.Layer<any, any, never>, port: number) =
 		HttpApiBuilder.middlewareCors(),
 	).pipe(Layer.provide(deps))
 
-	return HttpApiBuilder.serve().pipe(Layer.provide(apiLayer))
+	return HttpApiBuilder.serve().pipe(
+		HttpServer.withLogAddress,
+		Layer.provide(apiLayer),
+	)
 }

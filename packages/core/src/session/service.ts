@@ -155,14 +155,17 @@ export const SessionServiceLive = Layer.effect(
 						return yield* Effect.fail(new Error(`Session not found: ${sessionId}`))
 					}
 
-					const cwd = yield* config.cwd()
+					const isActive = yield* sdk.isSessionActive(sessionId)
+					if (!isActive) {
+						const cwd = yield* config.cwd()
 
-					yield* sdk.startSession({
-						sessionId,
-						cwd,
-						model: session.model,
-						resumeToken: session.resumeToken ?? undefined,
-					})
+						yield* sdk.startSession({
+							sessionId,
+							cwd,
+							model: session.model,
+							resumeToken: session.resumeToken ?? undefined,
+						})
+					}
 
 					yield* sdk.sendTurn(sessionId, [{ type: "text", text }])
 				}),

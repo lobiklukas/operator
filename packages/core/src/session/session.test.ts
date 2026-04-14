@@ -16,6 +16,7 @@ const testDbPath = join(tmpdir(), `operator-test-${Date.now()}.sqlite`)
 const MockSDKAdapter = Layer.succeed(SDKAdapter, {
 	startSession: () => Effect.void,
 	sendTurn: () => Effect.void,
+	isSessionActive: () => Effect.succeed(false),
 	interruptTurn: () => Effect.void,
 	stopSession: () => Effect.void,
 	stopAll: () => Effect.void,

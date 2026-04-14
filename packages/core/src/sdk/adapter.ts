@@ -18,6 +18,7 @@ export class SDKAdapter extends Context.Tag("operator/SDKAdapter")<
 			sessionId: string,
 			content: Array<{ type: "text"; text: string }>,
 		) => Effect.Effect<void, Error>
+		readonly isSessionActive: (sessionId: string) => Effect.Effect<boolean>
 		readonly interruptTurn: (sessionId: string) => Effect.Effect<void, Error>
 		readonly stopSession: (sessionId: string) => Effect.Effect<void, Error>
 		readonly stopAll: () => Effect.Effect<void, Error>
@@ -38,6 +39,7 @@ export const SDKAdapterLive = Layer.effect(
 		const promptQueues = new Map<string, Queue.Queue<{ type: "user"; content: unknown[] }>>()
 
 		function makePromptIterable(
+			sessionId: string,
 			queue: Queue.Queue<{ type: "user"; content: unknown[] }>,
 		): AsyncIterable<unknown> {
 			return {
@@ -50,7 +52,7 @@ export const SDKAdapterLive = Layer.effect(
 								done: false,
 								value: {
 									type: "user" as const,
-									session_id: "",
+									session_id: sessionId,
 									message: { role: "user" as const, content: item.content },
 									parent_tool_use_id: null,
 								},
@@ -228,7 +230,7 @@ export const SDKAdapterLive = Layer.effect(
 					const queue = yield* Queue.unbounded<{ type: "user"; content: unknown[] }>()
 					promptQueues.set(sdkConfig.sessionId, queue)
 
-					const promptIterable = makePromptIterable(queue)
+					const promptIterable = makePromptIterable(sdkConfig.sessionId, queue)
 
 					let sdkQuery: AsyncIterable<unknown>
 					try {
@@ -287,6 +289,9 @@ export const SDKAdapterLive = Layer.effect(
 					}
 					yield* Queue.offer(queue, { type: "user", content })
 				}),
+
+			isSessionActive: (sessionId: string) =>
+				Effect.sync(() => activeSessions.has(sessionId)),
 
 			interruptTurn: (sessionId: string) =>
 				Effect.sync(() => {

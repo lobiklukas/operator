@@ -64,3 +64,8 @@ export async function startServer(options: ConfigOptions = {}): Promise<StartRes
 		stop: () => runtime.dispose(),
 	}
 }
+
+// Start when run directly
+if (import.meta.main) {
+	await startServer()
+}
