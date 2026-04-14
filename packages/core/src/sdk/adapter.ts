@@ -220,6 +220,11 @@ export const SDKAdapterLive: Layer.Layer<SDKAdapter, never, EventBus | ConfigSer
 			return {
 				startSession: (sdkConfig: SDKSessionConfig) =>
 					Effect.gen(function* () {
+						yield* Effect.annotateCurrentSpan({
+							sessionId: sdkConfig.sessionId,
+							model: sdkConfig.model ?? "default",
+							resume: sdkConfig.resumeToken !== undefined,
+						})
 						const cwd = yield* config.cwd()
 						const model = yield* config.model()
 
@@ -259,19 +264,22 @@ export const SDKAdapterLive: Layer.Layer<SDKAdapter, never, EventBus | ConfigSer
 						activeSessions.set(sdkConfig.sessionId, session)
 
 						const fiber = yield* Effect.fork(
-							runStream(sdkConfig.sessionId, sdkQuery, abortController.signal),
+							runStream(sdkConfig.sessionId, sdkQuery, abortController.signal).pipe(
+								Effect.withSpan("sdk.stream", { attributes: { sessionId: sdkConfig.sessionId } }),
+							),
 						)
 						session.fiber = fiber
-					}),
+					}).pipe(Effect.withSpan("sdk.startSession")),
 
 				sendTurn: (sessionId: string, content: Array<{ type: "text"; text: string }>) =>
 					Effect.gen(function* () {
+						yield* Effect.annotateCurrentSpan({ sessionId })
 						const queue = promptQueues.get(sessionId)
 						if (!queue) {
 							return yield* Effect.fail(new NoActiveSessionError({ sessionId }))
 						}
 						yield* Queue.offer(queue, { type: "user", content })
-					}),
+					}).pipe(Effect.withSpan("sdk.sendTurn")),
 
 				isSessionActive: (sessionId: string) =>
 					Effect.sync(() => activeSessions.has(sessionId)),

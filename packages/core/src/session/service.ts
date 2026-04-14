@@ -103,7 +103,7 @@ export const SessionServiceLive: Layer.Layer<
 					})
 
 					return session
-				}),
+				}).pipe(Effect.withSpan("session.create")),
 
 			get: (id: SessionID) =>
 				Effect.gen(function* () {
@@ -139,6 +139,8 @@ export const SessionServiceLive: Layer.Layer<
 
 			prompt: (sessionId: SessionID, text: string) =>
 				Effect.gen(function* () {
+					yield* Effect.annotateCurrentSpan({ sessionId, textLength: text.length })
+
 					db.update(dbSchema.sessions)
 						.set({ status: "running", updatedAt: now() })
 						.where(eq(dbSchema.sessions.id, sessionId))
@@ -173,10 +175,11 @@ export const SessionServiceLive: Layer.Layer<
 					}
 
 					yield* sdk.sendTurn(sessionId, [{ type: "text", text }])
-				}),
+				}).pipe(Effect.withSpan("session.prompt")),
 
 			interrupt: (sessionId: SessionID) =>
 				Effect.gen(function* () {
+					yield* Effect.annotateCurrentSpan({ sessionId })
 					yield* sdk.interruptTurn(sessionId)
 
 					db.update(dbSchema.sessions)
@@ -189,7 +192,7 @@ export const SessionServiceLive: Layer.Layer<
 						sessionId,
 						timestamp: now(),
 					})
-				}),
+				}).pipe(Effect.withSpan("session.interrupt")),
 
 			archive: (id: SessionID) =>
 				Effect.gen(function* () {
