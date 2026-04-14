@@ -1,12 +1,17 @@
 import { HttpApiBuilder, HttpRouter, HttpServerResponse } from "@effect/platform"
-import { Effect, Stream } from "effect"
+import { Duration, Effect, Schedule, Stream } from "effect"
 import { EventBus } from "../bus/index.js"
 
 const encoder = new TextEncoder()
+const HEARTBEAT = encoder.encode(": heartbeat\n\n")
+const HEARTBEAT_INTERVAL = Duration.seconds(30)
 
 /**
  * Raw SSE route for /api/sessions/:id/events.
  * Uses HttpApiBuilder.Router.use() to register alongside the HttpApi routes.
+ *
+ * A 30-second heartbeat comment ping prevents proxies and idle connections from
+ * being dropped during long agent turns.
  */
 export const SseRouteLive = HttpApiBuilder.Router.use((router) =>
 	Effect.gen(function* () {
@@ -26,7 +31,11 @@ export const SseRouteLive = HttpApiBuilder.Router.use((router) =>
 					}),
 				)
 
-				return HttpServerResponse.stream(eventStream, {
+				const heartbeatStream = Stream.repeatEffect(
+					Effect.as(Effect.sleep(HEARTBEAT_INTERVAL), HEARTBEAT),
+				)
+
+				return HttpServerResponse.stream(Stream.merge(eventStream, heartbeatStream), {
 					contentType: "text/event-stream",
 					headers: {
 						"Cache-Control": "no-cache",
