@@ -39,18 +39,14 @@ export const SessionsGroupLive = HttpApiBuilder.group(
 					const messages = yield* sessions.getMessages(path.id as SessionID)
 					return { ...session, messages } as any
 				}).pipe(
-					Effect.mapError(() => ({ error: "Not found" })),
+					Effect.catchTag("SessionNotFoundError", (e) => Effect.fail({ error: e.message })),
 				),
 			)
 			.handle("createSession", ({ payload }) =>
 				Effect.gen(function* () {
 					const sessions = yield* SessionService
 					return (yield* sessions.create(payload)) as any
-				}).pipe(
-					Effect.mapError((err) => ({
-						error: err instanceof Error ? err.message : "Failed to create session",
-					})),
-				),
+				}),
 			)
 			.handle("sendPrompt", ({ path, payload }) =>
 				Effect.gen(function* () {
@@ -58,9 +54,7 @@ export const SessionsGroupLive = HttpApiBuilder.group(
 					yield* sessions.prompt(path.id as SessionID, payload.text)
 					return { ok: true as const }
 				}).pipe(
-					Effect.mapError((err) => ({
-						error: err instanceof Error ? err.message : "Failed to send prompt",
-					})),
+					Effect.catchAll((err) => Effect.fail({ error: err.message })),
 				),
 			)
 			.handle("interrupt", ({ path }) =>
@@ -68,21 +62,13 @@ export const SessionsGroupLive = HttpApiBuilder.group(
 					const sessions = yield* SessionService
 					yield* sessions.interrupt(path.id as SessionID)
 					return { ok: true as const }
-				}).pipe(
-					Effect.mapError((err) => ({
-						error: err instanceof Error ? err.message : "Failed to interrupt",
-					})),
-				),
+				}),
 			)
 			.handle("archive", ({ path }) =>
 				Effect.gen(function* () {
 					const sessions = yield* SessionService
 					yield* sessions.archive(path.id as SessionID)
 					return { ok: true as const }
-				}).pipe(
-					Effect.mapError((err) => ({
-						error: err instanceof Error ? err.message : "Failed to archive",
-					})),
-				),
+				}),
 			),
 )

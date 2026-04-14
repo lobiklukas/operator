@@ -10,6 +10,7 @@ import { Context, Effect, Layer } from "effect"
 import { ulid } from "ulid"
 import { EventBus } from "../bus/index.js"
 import { ConfigService } from "../config/service.js"
+import { NoActiveSessionError, SDKImportError, SessionNotFoundError } from "../errors.js"
 import { SDKAdapter } from "../sdk/adapter.js"
 import { StorageService } from "../storage/database.js"
 import * as dbSchema from "../storage/schema.js"
@@ -21,33 +22,37 @@ function now(): string {
 export class SessionService extends Context.Tag("operator/SessionService")<
 	SessionService,
 	{
-		readonly create: (input: CreateSessionInput) => Effect.Effect<Session, Error>
-		readonly get: (id: SessionID) => Effect.Effect<Session, Error>
+		readonly create: (input: CreateSessionInput) => Effect.Effect<Session>
+		readonly get: (id: SessionID) => Effect.Effect<Session, SessionNotFoundError>
 		readonly list: () => Effect.Effect<ReadonlyArray<Session>>
 		readonly getMessages: (sessionId: SessionID) => Effect.Effect<ReadonlyArray<Message>>
-		readonly prompt: (sessionId: SessionID, text: string) => Effect.Effect<void, Error>
-		readonly interrupt: (sessionId: SessionID) => Effect.Effect<void, Error>
-		readonly archive: (id: SessionID) => Effect.Effect<void, Error>
+		readonly prompt: (
+			sessionId: SessionID,
+			text: string,
+		) => Effect.Effect<void, SessionNotFoundError | SDKImportError | NoActiveSessionError>
+		readonly interrupt: (sessionId: SessionID) => Effect.Effect<void>
+		readonly archive: (id: SessionID) => Effect.Effect<void>
 		readonly getMostRecent: () => Effect.Effect<Session | null>
-		readonly updateResumeToken: (sessionId: SessionID, token: string) => Effect.Effect<void, Error>
+		readonly updateResumeToken: (sessionId: SessionID, token: string) => Effect.Effect<void>
 		readonly updateTokenUsage: (
 			sessionId: SessionID,
 			input: number,
 			output: number,
-		) => Effect.Effect<void, Error>
+		) => Effect.Effect<void>
 		readonly appendMessage: (
 			sessionId: SessionID,
 			role: "user" | "assistant" | "system",
 			parts: MessagePart[],
-		) => Effect.Effect<Message, Error>
-		readonly updateMessageParts: (
-			messageId: string,
-			parts: MessagePart[],
-		) => Effect.Effect<void, Error>
+		) => Effect.Effect<Message>
+		readonly updateMessageParts: (messageId: string, parts: MessagePart[]) => Effect.Effect<void>
 	}
 >() {}
 
-export const SessionServiceLive = Layer.effect(
+export const SessionServiceLive: Layer.Layer<
+	SessionService,
+	never,
+	StorageService | EventBus | ConfigService | SDKAdapter
+> = Layer.effect(
 	SessionService,
 	Effect.gen(function* () {
 		const storage = yield* StorageService
@@ -106,7 +111,7 @@ export const SessionServiceLive = Layer.effect(
 
 					const row = rows[0]
 					if (!row) {
-						return yield* Effect.fail(new Error(`Session not found: ${id}`))
+						return yield* Effect.fail(new SessionNotFoundError({ id }))
 					}
 
 					return rowToSession(row)
@@ -152,7 +157,7 @@ export const SessionServiceLive = Layer.effect(
 						.all()
 					const session = rows[0]
 					if (!session) {
-						return yield* Effect.fail(new Error(`Session not found: ${sessionId}`))
+						return yield* Effect.fail(new SessionNotFoundError({ id: sessionId }))
 					}
 
 					const isActive = yield* sdk.isSessionActive(sessionId)
