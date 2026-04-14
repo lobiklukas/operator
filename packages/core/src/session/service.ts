@@ -141,6 +141,18 @@ export const SessionServiceLive: Layer.Layer<
 				Effect.gen(function* () {
 					yield* Effect.annotateCurrentSpan({ sessionId, textLength: text.length })
 
+					// Persist user message before sending to SDK
+					db.insert(dbSchema.messages)
+						.values({
+							id: ulid(),
+							sessionId,
+							role: "user",
+							parts: [{ type: "text", content: text }] as unknown[],
+							tokenUsage: null,
+							createdAt: now(),
+						})
+						.run()
+
 					db.update(dbSchema.sessions)
 						.set({ status: "running", updatedAt: now() })
 						.where(eq(dbSchema.sessions.id, sessionId))

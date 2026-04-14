@@ -3,6 +3,7 @@ import { EventBusLive } from "../bus/index.js"
 import { type ConfigOptions, ConfigServiceLive } from "../config/service.js"
 import { TracingLive } from "../observability/tracing.js"
 import { SDKAdapterLive } from "../sdk/adapter.js"
+import { EventPersisterLive } from "../session/persister.js"
 import { SessionServiceLive } from "../session/service.js"
 import { StorageServiceLive } from "../storage/database.js"
 
@@ -23,5 +24,18 @@ export function createMainLayer(options: {
 		Layer.provide(SDKLayer),
 	)
 
-	return Layer.mergeAll(SessionLayer, BusLayer, ConfigLayer, StorageLayer, SDKLayer, TracingLive)
+	const PersisterLayer = EventPersisterLive.pipe(
+		Layer.provide(BusLayer),
+		Layer.provide(StorageLayer),
+	)
+
+	return Layer.mergeAll(
+		SessionLayer,
+		BusLayer,
+		ConfigLayer,
+		StorageLayer,
+		SDKLayer,
+		PersisterLayer,
+		TracingLive,
+	)
 }
