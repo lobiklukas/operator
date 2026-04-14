@@ -8,6 +8,7 @@
 	},
 	"scripts": {
 		"dev": "bun run src/index.ts",
+		"dev:watch": "bun --watch run src/index.ts",
 		"typecheck": "tsc --noEmit",
 		"test": "vitest run",
 		"clean": "rm -rf dist .turbo"

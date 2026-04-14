@@ -12,15 +12,28 @@ const program = new Command()
 	.option("-r, --resume <id>", "Resume a specific session by ID")
 	.option("-c, --continue", "Continue the most recent session")
 	.option("-m, --model <model>", "Override the model")
+	.option("-s, --server-url <url>", "Connect to an already-running server (skips embedded server)")
 
-program.action(async (options: { resume?: string; continue?: boolean; model?: string }) => {
-	const server = await startServer({
-		model: options.model,
-	})
+program.action(
+	async (options: {
+		resume?: string
+		continue?: boolean
+		model?: string
+		serverUrl?: string
+	}) => {
+		let serverUrl: string
+		let stopServer: (() => Promise<void>) | undefined
 
-	console.log(`Operator server started at ${server.url}`)
+		if (options.serverUrl) {
+			serverUrl = options.serverUrl
+		} else {
+			const server = await startServer({ model: options.model })
+			serverUrl = server.url
+			stopServer = server.stop
+			console.log(`Operator server started at ${serverUrl}`)
+		}
 
-	const client = createClient(server.url)
+		const client = createClient(serverUrl)
 
 	let sessionId: string | undefined
 
@@ -68,13 +81,13 @@ program.action(async (options: { resume?: string; continue?: boolean; model?: st
 
 		const renderer = await createCliRenderer()
 
-		render(() => App({ client, baseUrl: server.url, sessionStore }), renderer)
+		render(() => App({ client, baseUrl: serverUrl, sessionStore }), renderer)
 
 		// Handle process exit
 		process.on("SIGINT", async () => {
 			unsubscribe()
 			renderer.destroy()
-			await server.stop()
+			await stopServer?.()
 			process.exit(0)
 		})
 	} catch (err) {
@@ -99,7 +112,7 @@ program.action(async (options: { resume?: string; continue?: boolean; model?: st
 				if (text.trim() === "/quit" || text.trim() === "/exit") {
 					unsubscribe()
 					rl.close()
-					await server.stop()
+					await stopServer?.()
 					process.exit(0)
 				}
 				await sessionStore.sendPrompt(text.trim())
@@ -112,10 +125,11 @@ program.action(async (options: { resume?: string; continue?: boolean; model?: st
 		process.on("SIGINT", async () => {
 			unsubscribe()
 			rl.close()
-			await server.stop()
+			await stopServer?.()
 			process.exit(0)
 		})
 	}
-})
+},
+)
 
 program.parse()
