@@ -5,6 +5,8 @@
 	"workspaces": ["packages/*"],
 	"scripts": {
 		"dev": "turbo run dev",
+		"dev:core": "bun run --cwd packages/core dev",
+		"dev:tui": "bun run --cwd packages/tui dev",
 		"build": "turbo run build",
 		"typecheck": "turbo run typecheck",
 		"lint": "biome check .",
