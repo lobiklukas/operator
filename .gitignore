@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.turbo/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.tsbuildinfo
+.DS_Store
+.env
+.env.local
